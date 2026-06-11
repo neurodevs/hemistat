@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.nii
+*.nii.gz
+*.png
