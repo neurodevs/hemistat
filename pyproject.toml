@@ -25,6 +25,13 @@ dependencies = [
     "scipy>=1.7",
 ]
 
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
 [project.urls]
 Homepage = "https://github.com/neurodevs/hemistat"
 Repository = "https://github.com/neurodevs/hemistat"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
