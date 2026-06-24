@@ -17,6 +17,7 @@ import pytest
 from hemistat.analysis import (
     active_slices,
     analyze_stat_map,
+    mirror_pairs,
     split_hemispheres,
     vox_to_mni,
 )
@@ -91,3 +92,20 @@ def test_split_hemispheres_partitions_voxels_on_mni_x():
 
     np.testing.assert_array_equal(left, expected_left)
     np.testing.assert_array_equal(right, expected_right)
+
+
+def test_mirror_pairs_to_geometric_mirror_even_when_blank():
+    # affine: mni_x = 2*i - 3  ->  geometric mirror indices: 0<->3, 1<->2.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+    data[1, 0, 0] = 5.0   # active on the left; its mirror (i=2) is blank
+
+    # Pairs to geometric mirror 2 despite slice 2 having no activation.
+    assert mirror_pairs(data, affine, axis=0) == [(1, 2)]

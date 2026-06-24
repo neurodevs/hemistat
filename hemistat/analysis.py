@@ -34,6 +34,25 @@ def split_hemispheres(
     return data * is_left, data * ~is_left
 
 
+def mirror_pairs(
+    data: np.ndarray, affine: np.ndarray, axis: int = 0
+) -> list[tuple[int, int | None]]:
+    """Pair each active slice with its geometric mirror index across MNI x = 0.
+
+    The mirror is purely geometric (from the affine), independent of whether the
+    mirror slice contains activation; `None` means the mirror falls off the grid.
+    """
+    a = affine[axis, axis]
+    t = affine[axis, 3]
+    n = data.shape[axis]
+    pairs = []
+    for i in active_slices(data, axis):
+        mirror_mni = -vox_to_mni(affine, i, axis)
+        j = round((mirror_mni - t) / a)
+        pairs.append((i, j if 0 <= j < n else None))
+    return pairs
+
+
 @dataclass(frozen=True)
 class StatMapAnalysis:
     """Results of analyzing a stat map, consumed by the renderer."""
