@@ -109,3 +109,19 @@ def test_mirror_pairs_to_geometric_mirror_even_when_blank():
 
     # Pairs to geometric mirror 2 despite slice 2 having no activation.
     assert mirror_pairs(data, affine, axis=0) == [(1, 2)]
+
+
+def test_mirror_pairs_returns_none_when_mirror_off_grid():
+    # affine: mni_x = 2*i + 2  ->  every voxel is positive x, so mirrors are off-grid.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, 2.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+    data[1, 0, 0] = 5.0   # mirror coord is -4 mm -> index -3, off the grid
+
+    assert mirror_pairs(data, affine, axis=0) == [(1, None)]
