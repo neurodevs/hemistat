@@ -171,3 +171,15 @@ def test_lateralization_score_is_zero_when_no_pairs():
     data = np.zeros((4, 1, 1), dtype=np.float32)
 
     assert lateralization_score(data, []) == 0.0
+
+
+def test_lateralization_score_is_partial_when_mirror_overlaps():
+    # Slice 1 has two equal hot voxels; only one has a non-blank mirror voxel,
+    # so half the activation is unique -> score 0.5.
+    data = np.zeros((4, 2, 1), dtype=np.float32)
+    data[1, 0, 0] = 4.0   # mirrored -> shared
+    data[1, 1, 0] = 4.0   # no mirror voxel -> unique
+    data[2, 0, 0] = 9.0   # mirror of (1, 0, 0)
+    pairs = [(1, 2)]
+
+    assert lateralization_score(data, pairs) == 0.5
