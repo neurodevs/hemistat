@@ -217,3 +217,47 @@ def test_lateralization_score_pools_voxels_globally_not_per_slice():
 
     # unique total = 2 (slice 1 @ z1); grand total = 3 + 5 = 8  ->  2 / 8
     assert calc_lateralization_score(data, pairs) == 0.25
+
+
+def test_lateralization_score_matches_mirror_pairs_oracle():
+    # An asymmetric volume with unique, shared, and edge (off-grid mirror) voxels.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -4.0],   # mni_x = 2*i - 4  ->  mirrors 0<->4, 1<->3, 2 is midline
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    data = np.zeros((5, 2, 2), dtype=np.float32)
+    data[0, 1, 0] = 5.0   # left edge; mirror (i=4) blank -> unique
+    data[1, 0, 0] = 3.0   # left; mirror (i=3 @ 0,0) blank -> unique
+    data[1, 0, 1] = 2.0   # left; mirror (i=3 @ 0,1) active -> shared
+    data[3, 0, 1] = 2.0   # right; mirror of (1, 0, 1)
+
+    sm = StatMap(path=Path("t.nii.gz"), data=data, affine=affine)
+
+    assert (
+        analyze_stat_map(sm).lateralization_score
+        == _lateralization_via_mirror_pairs(data, affine)
+    )
+
+
+def _lateralization_via_mirror_pairs(data, affine):
+    """The slice-pairing definition of the lateralization score.
+
+    A frozen copy of the original mirror-pairs approach, kept as an independent
+    cross-check. The production score will move to a whole-volume reflection;
+    this proves the two definitions agree (grouping-invariance).
+    """
+    unique_total = grand_total = 0.0
+    for idx, mirror_idx in mirror_pairs(data, affine, axis=0):
+        stat_sl = np.take(data, idx, axis=0)
+        mirror_sl = (
+            np.take(data, mirror_idx, axis=0)
+            if mirror_idx is not None
+            else np.zeros_like(stat_sl)
+        )
+        unique_total += np.sum(np.abs(np.where(mirror_sl == 0, stat_sl, 0)))
+        grand_total += np.sum(np.abs(stat_sl))
+    return unique_total / grand_total if grand_total else 0.0
