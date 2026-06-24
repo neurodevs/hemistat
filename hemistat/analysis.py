@@ -70,27 +70,18 @@ def mirror_pairs(
     return pairs
 
 
-def calc_lateralization_score(
-    data: np.ndarray, pairs: list[tuple[int, int | None]], axis: int = 0
-) -> float:
-    """Fraction of total activation that is unique to its side.
+def calc_lateralization_score(data: np.ndarray, affine: np.ndarray) -> float:
+    """Fraction of total activation whose left/right mirror voxel is blank.
 
-    Across all (slice, mirror) pairs, activation whose mirror voxel is blank is
-    pooled and divided by the total activation: a single global ratio, so the
-    result does not depend on how the volume is sliced. 1.0 means fully
-    lateralized; 0.0 when there is no activation.
+    Reflects the whole volume across MNI x = 0 and divides the activation with a
+    blank mirror by the total activation: a single global ratio over the whole
+    volume, independent of slicing. 1.0 means fully lateralized; 0.0 when there
+    is no activation.
     """
-    unique_total, grand_total = 0.0, 0.0
-    for idx, mirror_idx in pairs:
-        stat_sl = np.take(data, idx, axis=axis)
-        mirror_sl = (
-            np.take(data, mirror_idx, axis=axis)
-            if mirror_idx is not None
-            else np.zeros_like(stat_sl)
-        )
-        unique_total += np.sum(np.abs(np.where(mirror_sl == 0, stat_sl, 0)))
-        grand_total += np.sum(np.abs(stat_sl))
-    return float(unique_total / grand_total) if grand_total > 0 else 0.0
+    mirrored = reflect_across_midline(data, affine)
+    unique = np.where(mirrored == 0, data, 0)
+    grand_total = np.sum(np.abs(data))
+    return float(np.sum(np.abs(unique)) / grand_total) if grand_total > 0 else 0.0
 
 
 @dataclass(frozen=True)
@@ -101,7 +92,7 @@ class StatMapAnalysis:
     coronal: list[int]                    # active slice indices, axis 1
     sagittal: list[int]                   # active slice indices, axis 0
     mirror: list[tuple[int, int | None]]  # (slice, geometric mirror) on axis 0
-    lateralization_score: float                 # mean share of unique activation
+    lateralization_score: float           # global share of activation unique to its side
 
 
 def analyze_stat_map(sm: StatMap) -> StatMapAnalysis:
@@ -112,5 +103,5 @@ def analyze_stat_map(sm: StatMap) -> StatMapAnalysis:
         coronal=active_slices(sm.data, axis=1),
         sagittal=active_slices(sm.data, axis=0),
         mirror=mirror,
-        lateralization_score=calc_lateralization_score(sm.data, mirror, axis=0),
+        lateralization_score=calc_lateralization_score(sm.data, sm.affine),
     )

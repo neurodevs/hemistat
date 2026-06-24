@@ -7,7 +7,7 @@ Usage:
 
 import argparse
 
-from hemistat.analysis import calc_lateralization_score, mirror_pairs
+from hemistat.analysis import calc_lateralization_score
 from hemistat.io import load_stat_map
 
 
@@ -17,8 +17,7 @@ def main():
     args = parser.parse_args()
 
     sm = load_stat_map(args.nii_path)
-    pairs = mirror_pairs(sm.data, sm.affine, axis=0)
-    score = calc_lateralization_score(sm.data, pairs, axis=0)
+    score = calc_lateralization_score(sm.data, sm.affine)
 
     print(f"{sm.path.name}: lateralization score = {score:.3f}")
 

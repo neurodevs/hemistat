@@ -169,55 +169,88 @@ def test_mirror_pairs_returns_none_when_mirror_off_grid():
 
 
 def test_lateralization_score_is_one_when_fully_lateralized():
-    # Active slice 1 whose mirror (slice 2) is blank -> all activation is unique.
+    # affine: mni_x = 2*i - 3  ->  x=1's mirror (x=2) is blank.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
     data = np.zeros((4, 1, 1), dtype=np.float32)
-    data[1, 0, 0] = 5.0
-    pairs = [(1, 2)]
+    data[1, 0, 0] = 5.0   # mirror blank -> all activation is unique
 
-    assert calc_lateralization_score(data, pairs) == 1.0
+    assert calc_lateralization_score(data, affine) == 1.0
 
 
-def test_lateralization_score_treats_none_mirror_as_fully_unique():
-    # mirror_pairs yields None when the mirror is off-grid: no counterpart
-    # exists, so all of the slice's activation is unique.
+def test_lateralization_score_counts_off_grid_mirror_as_unique():
+    # affine: mni_x = 2*i + 2  ->  x=1's mirror is off the grid (no counterpart).
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, 2.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
     data = np.zeros((4, 1, 1), dtype=np.float32)
-    data[1, 0, 0] = 5.0
-    pairs = [(1, None)]
+    data[1, 0, 0] = 5.0   # mirror off-grid -> activation is unique
 
-    assert calc_lateralization_score(data, pairs) == 1.0
+    assert calc_lateralization_score(data, affine) == 1.0
 
 
-def test_lateralization_score_is_zero_when_no_pairs():
-    # No active slices -> nothing to measure -> 0.0 (not NaN).
+def test_lateralization_score_is_zero_when_no_activation():
+    # Empty volume -> nothing to measure -> 0.0 (not NaN).
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
     data = np.zeros((4, 1, 1), dtype=np.float32)
 
-    assert calc_lateralization_score(data, []) == 0.0
+    assert calc_lateralization_score(data, affine) == 0.0
 
 
-def test_lateralization_score_is_partial_when_mirror_overlaps():
-    # Slice 1 has two equal hot voxels; only one has a non-blank mirror voxel,
-    # so half the activation is unique -> score 0.5.
-    data = np.zeros((4, 2, 1), dtype=np.float32)
-    data[1, 0, 0] = 4.0   # mirrored -> shared
-    data[1, 1, 0] = 4.0   # no mirror voxel -> unique
-    data[2, 0, 0] = 9.0   # mirror of (1, 0, 0)
-    pairs = [(1, 2)]
+def test_lateralization_score_is_partial_with_mix_of_unique_and_shared():
+    # affine: mni_x = 2*i - 3  ->  mirrors 0<->3, 1<->2.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+    data[0, 0, 0] = 4.0   # mirror (x=3) blank -> unique
+    data[1, 0, 0] = 2.0   # shared mirror pair with x=2
+    data[2, 0, 0] = 2.0
 
-    assert calc_lateralization_score(data, pairs) == 0.5
+    # unique 4 / total 8 = 0.5
+    assert calc_lateralization_score(data, affine) == 0.5
 
 
-def test_lateralization_score_pools_voxels_globally_not_per_slice():
-    # Two mirror-partner slices with different totals. The grouping-invariant
-    # metric pools voxels: unique_total / grand_total, NOT the mean of per-slice
-    # ratios (which would give (2/3 + 0) / 2 = 1/3 here).
+def test_lateralization_score_pools_voxels_globally():
+    # affine: mni_x = 2*i - 3  ->  mirrors 1<->2; pooled over the whole volume.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
     data = np.zeros((4, 1, 2), dtype=np.float32)
-    data[1, 0, 0] = 1.0   # slice 1, mirror (slice 2 @ z0) active -> shared
-    data[1, 0, 1] = 2.0   # slice 1, mirror (slice 2 @ z1) blank  -> unique
-    data[2, 0, 0] = 5.0   # slice 2, mirror (slice 1 @ z0) active -> shared
-    pairs = [(1, 2), (2, 1)]
+    data[1, 0, 0] = 1.0   # mirror (x=2 @ z0) active -> shared
+    data[1, 0, 1] = 2.0   # mirror (x=2 @ z1) blank  -> unique
+    data[2, 0, 0] = 5.0   # mirror (x=1 @ z0) active -> shared
 
-    # unique total = 2 (slice 1 @ z1); grand total = 3 + 5 = 8  ->  2 / 8
-    assert calc_lateralization_score(data, pairs) == 0.25
+    # unique 2 / total (1 + 2 + 5) = 2 / 8
+    assert calc_lateralization_score(data, affine) == 0.25
 
 
 def test_lateralization_score_matches_mirror_pairs_oracle():
