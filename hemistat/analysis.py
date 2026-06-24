@@ -60,6 +60,7 @@ class StatMapAnalysis:
     axial: list[int]      # active slice indices, axis 2
     coronal: list[int]    # active slice indices, axis 1
     sagittal: list[int]   # active slice indices, axis 0
+    mirror: list[tuple[int, int | None]]  # (slice, geometric mirror) on axis 0
 
 
 def analyze_stat_map(sm: StatMap) -> StatMapAnalysis:
@@ -68,4 +69,5 @@ def analyze_stat_map(sm: StatMap) -> StatMapAnalysis:
         axial=active_slices(sm.data, axis=2),
         coronal=active_slices(sm.data, axis=1),
         sagittal=active_slices(sm.data, axis=0),
+        mirror=mirror_pairs(sm.data, sm.affine, axis=0),
     )

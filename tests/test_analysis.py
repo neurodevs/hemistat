@@ -58,7 +58,7 @@ def test_analyze_collects_active_slices_per_axis():
     # A single hot voxel is active on exactly one slice of each axis.
     data = np.zeros((4, 4, 4), dtype=np.float32)
     data[3, 2, 1] = 1.0
-    sm = StatMap(path=Path("t.nii.gz"), data=data)
+    sm = StatMap(path=Path("t.nii.gz"), data=data, affine=np.eye(4))
 
     analysis = analyze_stat_map(sm)
 
@@ -67,6 +67,25 @@ def test_analyze_collects_active_slices_per_axis():
         "coronal": analysis.coronal,
         "sagittal": analysis.sagittal,
     } == {"axial": [1], "coronal": [2], "sagittal": [3]}
+
+
+def test_analyze_includes_mirror_pairs():
+    # affine: mni_x = 2*i - 3  ->  geometric mirror indices: 0<->3, 1<->2.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+    data[1, 0, 0] = 5.0
+    sm = StatMap(path=Path("t.nii.gz"), data=data, affine=affine)
+
+    analysis = analyze_stat_map(sm)
+
+    assert analysis.mirror == [(1, 2)]
 
 
 def test_split_hemispheres_partitions_voxels_on_mni_x():
