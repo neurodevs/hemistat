@@ -25,6 +25,15 @@ def active_slices(data: np.ndarray, axis: int) -> list[int]:
     ]
 
 
+def split_hemispheres(
+    data: np.ndarray, affine: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Split voxels into (left, right) hemispheres on MNI x (left is x <= 0)."""
+    mni_xs = affine[0, 0] * np.arange(data.shape[0]) + affine[0, 3]
+    is_left = (mni_xs <= 0)[:, np.newaxis, np.newaxis]
+    return data * is_left, data * ~is_left
+
+
 @dataclass(frozen=True)
 class StatMapAnalysis:
     """Results of analyzing a stat map, consumed by the renderer."""

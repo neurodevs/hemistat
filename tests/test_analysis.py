@@ -14,7 +14,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from hemistat.analysis import active_slices, analyze_stat_map, vox_to_mni
+from hemistat.analysis import (
+    active_slices,
+    analyze_stat_map,
+    split_hemispheres,
+    vox_to_mni,
+)
 from hemistat.io import StatMap
 
 # Typical MNI152 2mm affine: 2mm isotropic voxels, axis-aligned (diagonal).
@@ -61,3 +66,28 @@ def test_analyze_collects_active_slices_per_axis():
         "coronal": analysis.coronal,
         "sagittal": analysis.sagittal,
     } == {"axial": [1], "coronal": [2], "sagittal": [3]}
+
+
+def test_split_hemispheres_partitions_voxels_on_mni_x():
+    # affine: mni_x = 2*i - 3  ->  i=0,1 are left (x<=0); i=2,3 are right (x>0).
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+    data[1, 0, 0] = 5.0   # left hemisphere
+    data[3, 0, 0] = 7.0   # right hemisphere
+
+    left, right = split_hemispheres(data, affine)
+
+    expected_left = np.zeros((4, 1, 1), dtype=np.float32)
+    expected_left[1, 0, 0] = 5.0
+    expected_right = np.zeros((4, 1, 1), dtype=np.float32)
+    expected_right[3, 0, 0] = 7.0
+
+    np.testing.assert_array_equal(left, expected_left)
+    np.testing.assert_array_equal(right, expected_right)
