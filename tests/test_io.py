@@ -47,3 +47,15 @@ def test_data_is_3d_float32_with_values_preserved(make_nii):
     assert sm.data.shape == (4, 5, 6)
     assert sm.data.dtype == np.float32
     assert sm.data[1, 2, 3] == 5.0
+
+
+def test_squeezes_trailing_singleton_4d_dimension(make_nii):
+    # A (x, y, z, 1) volume is unambiguously a single 3D map -> squeeze to 3D.
+    data = np.zeros((3, 3, 3, 1), dtype=np.float32)
+    data[1, 1, 1, 0] = 5.0
+    path = make_nii(data, name="singleton.nii.gz")
+
+    sm = load_stat_map(path)
+
+    assert sm.data.shape == (3, 3, 3)
+    assert sm.data[1, 1, 1] == 5.0

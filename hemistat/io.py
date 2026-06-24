@@ -22,4 +22,8 @@ def load_stat_map(path: str | Path) -> StatMap:
     """Load a NIfTI file into a StatMap."""
     img = nib.load(str(path))
     data = img.get_fdata().astype(np.float32)
+
+    if data.ndim == 4 and data.shape[3] == 1:
+        data = data[..., 0]
+
     return StatMap(path=Path(path), data=data, affine=img.affine)
