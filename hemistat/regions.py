@@ -46,10 +46,18 @@ class AtlasLabeler:
 
 
 def extract_regions(mask: np.ndarray, labeler: RegionLabeler) -> dict[str, int]:
-    """Count active (non-zero) voxels in `mask`, grouped by atlas label."""
+    """Count active (non-zero) voxels in `mask`, grouped by atlas label.
+
+    Hemisphere is already encoded by which half of the volume is passed in, so a
+    leading "Left "/"Right " prefix is stripped and counts merge by region.
+    """
     counts: dict[str, int] = {}
     for vox in np.argwhere(mask != 0):
         name = labeler.label_at(tuple(vox))
+        for prefix in ("Left ", "Right "):
+            if name.startswith(prefix):
+                name = name[len(prefix):]
+                break
         counts[name] = counts.get(name, 0) + 1
     return counts
 

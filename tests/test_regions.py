@@ -42,10 +42,28 @@ def test_extract_regions_counts_active_voxels_by_label():
     }
 
 
+def test_extract_regions_strips_hemisphere_prefixes():
+    data = np.zeros((3, 3, 3), dtype=np.float32)
+    data[0, 0, 0] = 1.0
+    data[1, 0, 0] = 1.0
+
+    labeler = FakeLabeler(
+        {
+            (0, 0, 0): "Left Thalamus",
+            (1, 0, 0): "Right Thalamus",
+        }
+    )
+
+    # Hemisphere is tracked by which half is passed in, so the L/R prefix is
+    # dropped and both voxels merge under the bare region name.
+    assert extract_regions(data, labeler) == {"Thalamus": 2}
+
+
 def test_atlas_labeler_returns_cortical_label():
     cort = np.zeros((2, 2, 2), dtype=int)
     cort[0, 0, 0] = 1
     sub = np.zeros((2, 2, 2), dtype=int)
+
     labeler = AtlasLabeler(
         cort=cort,
         cort_labels=["Background", "Precentral Gyrus"],
@@ -60,6 +78,7 @@ def test_atlas_labeler_falls_back_to_subcortical_label():
     cort = np.zeros((2, 2, 2), dtype=int)   # no cortical label here
     sub = np.zeros((2, 2, 2), dtype=int)
     sub[0, 0, 0] = 1
+
     labeler = AtlasLabeler(
         cort=cort,
         cort_labels=["Background"],
@@ -73,6 +92,7 @@ def test_atlas_labeler_falls_back_to_subcortical_label():
 def test_atlas_labeler_returns_unknown_when_unlabeled():
     cort = np.zeros((2, 2, 2), dtype=int)
     sub = np.zeros((2, 2, 2), dtype=int)
+
     labeler = AtlasLabeler(
         cort=cort,
         cort_labels=["Background"],
@@ -88,6 +108,7 @@ def test_atlas_labeler_prefers_cortical_over_subcortical():
     cort[0, 0, 0] = 1
     sub = np.zeros((2, 2, 2), dtype=int)
     sub[0, 0, 0] = 1   # both labeled at the same voxel
+    
     labeler = AtlasLabeler(
         cort=cort,
         cort_labels=["Background", "Precentral Gyrus"],
