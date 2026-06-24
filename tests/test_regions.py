@@ -4,9 +4,12 @@ The atlas lookup is injected as a `RegionLabeler`, so these tests use a fake
 backed by a small coordinate->name map and never fetch a real atlas.
 """
 
+import types
+
+import nibabel as nib
 import numpy as np
 
-from hemistat.regions import AtlasLabeler, extract_regions
+from hemistat.regions import AtlasLabeler, extract_regions, harvard_oxford_labeler
 
 
 class FakeLabeler:
@@ -93,3 +96,31 @@ def test_atlas_labeler_prefers_cortical_over_subcortical():
     )
 
     assert labeler.label_at((0, 0, 0)) == "Precentral Gyrus"
+
+
+def test_harvard_oxford_labeler_builds_from_fetched_atlases():
+    # Fake fetch returns synthetic atlases on the target grid -> no network.
+    affine = np.eye(4)
+    target = nib.Nifti1Image(np.zeros((2, 2, 2), dtype=np.float32), affine)
+
+    cort_map = np.zeros((2, 2, 2), dtype=np.int16)
+    cort_map[0, 0, 0] = 1
+    sub_map = np.zeros((2, 2, 2), dtype=np.int16)
+    sub_map[1, 0, 0] = 1
+
+    def fake_fetch(name):
+        if name.startswith("cort"):
+            return types.SimpleNamespace(
+                maps=nib.Nifti1Image(cort_map, affine),
+                labels=["Background", "Precentral Gyrus"],
+            )
+        return types.SimpleNamespace(
+            maps=nib.Nifti1Image(sub_map, affine),
+            labels=["Background", "Thalamus"],
+        )
+
+    labeler = harvard_oxford_labeler(target, fetch_atlas=fake_fetch)
+
+    # Both atlases wired through: cortical voxel and subcortical voxel resolve.
+    resolved = (labeler.label_at((0, 0, 0)), labeler.label_at((1, 0, 0)))
+    assert resolved == ("Precentral Gyrus", "Thalamus")

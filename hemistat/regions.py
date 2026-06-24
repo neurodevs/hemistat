@@ -6,7 +6,9 @@ the atlas lookup, so tests inject a fake and never touch the network.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from nilearn.image import resample_to_img
 from typing import Protocol
 
 import numpy as np
@@ -50,3 +52,28 @@ def extract_regions(mask: np.ndarray, labeler: RegionLabeler) -> dict[str, int]:
         name = labeler.label_at(tuple(vox))
         counts[name] = counts.get(name, 0) + 1
     return counts
+
+
+def harvard_oxford_labeler(
+    target_img, fetch_atlas: Callable[[str], object]
+) -> AtlasLabeler:
+    """Build an AtlasLabeler from Harvard-Oxford atlases resampled to `target_img`.
+
+    `fetch_atlas(name)` returns an object with `.maps` (a label image) and
+    `.labels` (list of names) — in production `nilearn`'s
+    `fetch_atlas_harvard_oxford` (network), in tests a fake. Only the fetch
+    touches the network; resampling is offline.
+    """
+    def _resampled(atlas) -> np.ndarray:
+        img = resample_to_img(atlas.maps, target_img, interpolation="nearest")
+        return img.get_fdata().astype(int)
+
+    cort = fetch_atlas("cort-maxprob-thr25-2mm")
+    sub = fetch_atlas("sub-maxprob-thr25-2mm")
+
+    return AtlasLabeler(
+        cort=_resampled(cort),
+        cort_labels=cort.labels,
+        sub=_resampled(sub),
+        sub_labels=sub.labels,
+    )
