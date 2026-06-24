@@ -25,5 +25,7 @@ def load_stat_map(path: str | Path) -> StatMap:
 
     if data.ndim == 4 and data.shape[3] == 1:
         data = data[..., 0]
+    elif data.ndim == 4 and data.shape[3] > 1:
+        raise ValueError(f"Expected a single 3D volume, got {data.shape[3]} volumes!")
 
     return StatMap(path=Path(path), data=data, affine=img.affine)

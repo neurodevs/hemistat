@@ -59,3 +59,12 @@ def test_squeezes_trailing_singleton_4d_dimension(make_nii):
 
     assert sm.data.shape == (3, 3, 3)
     assert sm.data[1, 1, 1] == 5.0
+
+
+def test_raises_on_multi_volume_4d(make_nii):
+    # Several volumes -> ambiguous which to show -> refuse rather than guess.
+    data = np.zeros((3, 3, 3, 4), dtype=np.float32)
+    path = make_nii(data, name="timeseries.nii.gz")
+
+    with pytest.raises(ValueError, match=r"Expected a single 3D volume, got 4 volumes!"):
+        load_stat_map(path)
