@@ -31,8 +31,23 @@ def _to_single_volume(data: np.ndarray) -> np.ndarray:
     raise ValueError(f"Expected a single 3D volume, got {data.shape[3]} volumes!")
 
 
+def _require_diagonal_affine(affine: np.ndarray) -> None:
+    """Reject an oblique affine.
+
+    Canonicalization fixes axis permutations and flips, but not genuine rotation;
+    the geometry helpers assume an axis-aligned (diagonal) affine.
+    """
+    rotation = affine[:3, :3]
+    off_diagonal = rotation - np.diag(np.diagonal(rotation))
+    if not np.allclose(off_diagonal, 0.0, atol=1e-4):
+        raise ValueError(
+            f"Expected an axis-aligned affine; got an oblique one:\n{rotation}"
+        )
+
+
 def load_stat_map(path: str | Path) -> StatMap:
     """Load a NIfTI file into a StatMap."""
     img = nib.as_closest_canonical(nib.load(str(path)))
+    _require_diagonal_affine(img.affine)
     data = _to_single_volume(img.get_fdata().astype(np.float32))
     return StatMap(path=Path(path), data=data, affine=img.affine)

@@ -57,6 +57,23 @@ def test_load_canonicalizes_permuted_axes_to_diagonal(make_nii):
     np.testing.assert_allclose(off_diagonal, np.zeros((3, 3)), atol=1e-6)
 
 
+def test_load_raises_on_oblique_affine(make_nii):
+    # A 30-degree in-plane rotation: genuinely oblique, not fixable by reorienting.
+    c, s = np.cos(np.pi / 6), np.sin(np.pi / 6)
+    oblique = np.array(
+        [
+            [2 * c, -2 * s, 0.0, 0.0],
+            [2 * s, 2 * c, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    path = make_nii(np.zeros((2, 2, 2)), affine=oblique)
+
+    with pytest.raises(ValueError, match="oblique"):
+        load_stat_map(path)
+
+
 def test_data_is_3d_float32_with_values_preserved(make_nii):
     data = np.zeros((4, 5, 6), dtype=np.float32)
     data[1, 2, 3] = 5.0
