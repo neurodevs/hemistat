@@ -17,6 +17,7 @@ import pytest
 from hemistat.analysis import (
     active_slices,
     analyze_stat_map,
+    lateralization_score,
     mirror_pairs,
     split_hemispheres,
     vox_to_mni,
@@ -144,3 +145,12 @@ def test_mirror_pairs_returns_none_when_mirror_off_grid():
     data[1, 0, 0] = 5.0   # mirror coord is -4 mm -> index -3, off the grid
 
     assert mirror_pairs(data, affine, axis=0) == [(1, None)]
+
+
+def test_lateralization_score_is_one_when_fully_lateralized():
+    # Active slice 1 whose mirror (slice 2) is blank -> all activation is unique.
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+    data[1, 0, 0] = 5.0
+    pairs = [(1, 2)]
+
+    assert lateralization_score(data, pairs) == 1.0

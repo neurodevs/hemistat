@@ -53,6 +53,25 @@ def mirror_pairs(
     return pairs
 
 
+def lateralization_score(
+    data: np.ndarray, pairs: list[tuple[int, int | None]], axis: int = 0
+) -> float:
+    """Mean fraction of activation per slice that is unique to its side.
+
+    For each (slice, mirror) pair, the per-slice score is the share of the
+    slice's activation whose mirror voxel is blank; the result is the mean over
+    pairs. 1.0 means fully lateralized.
+    """
+    scores = []
+    for idx, mirror_idx in pairs:
+        stat_sl = np.take(data, idx, axis=axis)
+        mirror_sl = np.take(data, mirror_idx, axis=axis)
+        unique = np.where(mirror_sl == 0, stat_sl, 0)
+        total = np.sum(np.abs(stat_sl))
+        scores.append(np.sum(np.abs(unique)) / total)
+    return float(np.mean(scores))
+
+
 @dataclass(frozen=True)
 class StatMapAnalysis:
     """Results of analyzing a stat map, consumed by the renderer."""
