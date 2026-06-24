@@ -6,7 +6,7 @@ backed by a small coordinate->name map and never fetch a real atlas.
 
 import numpy as np
 
-from hemistat.regions import extract_regions
+from hemistat.regions import AtlasLabeler, extract_regions
 
 
 class FakeLabeler:
@@ -37,3 +37,59 @@ def test_extract_regions_counts_active_voxels_by_label():
         "Precentral Gyrus": 2,
         "Insular Cortex": 1,
     }
+
+
+def test_atlas_labeler_returns_cortical_label():
+    cort = np.zeros((2, 2, 2), dtype=int)
+    cort[0, 0, 0] = 1
+    sub = np.zeros((2, 2, 2), dtype=int)
+    labeler = AtlasLabeler(
+        cort=cort,
+        cort_labels=["Background", "Precentral Gyrus"],
+        sub=sub,
+        sub_labels=["Background"],
+    )
+
+    assert labeler.label_at((0, 0, 0)) == "Precentral Gyrus"
+
+
+def test_atlas_labeler_falls_back_to_subcortical_label():
+    cort = np.zeros((2, 2, 2), dtype=int)   # no cortical label here
+    sub = np.zeros((2, 2, 2), dtype=int)
+    sub[0, 0, 0] = 1
+    labeler = AtlasLabeler(
+        cort=cort,
+        cort_labels=["Background"],
+        sub=sub,
+        sub_labels=["Background", "Thalamus"],
+    )
+
+    assert labeler.label_at((0, 0, 0)) == "Thalamus"
+
+
+def test_atlas_labeler_returns_unknown_when_unlabeled():
+    cort = np.zeros((2, 2, 2), dtype=int)
+    sub = np.zeros((2, 2, 2), dtype=int)
+    labeler = AtlasLabeler(
+        cort=cort,
+        cort_labels=["Background"],
+        sub=sub,
+        sub_labels=["Background"],
+    )
+
+    assert labeler.label_at((0, 0, 0)) == "Unknown"
+
+
+def test_atlas_labeler_prefers_cortical_over_subcortical():
+    cort = np.zeros((2, 2, 2), dtype=int)
+    cort[0, 0, 0] = 1
+    sub = np.zeros((2, 2, 2), dtype=int)
+    sub[0, 0, 0] = 1   # both labeled at the same voxel
+    labeler = AtlasLabeler(
+        cort=cort,
+        cort_labels=["Background", "Precentral Gyrus"],
+        sub=sub,
+        sub_labels=["Background", "Thalamus"],
+    )
+
+    assert labeler.label_at((0, 0, 0)) == "Precentral Gyrus"
