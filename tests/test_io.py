@@ -23,6 +23,11 @@ def test_returns_statmap_instance(make_nii):
 
     assert isinstance(sm, StatMap)
 
+def test_includes_path_in_statmap(make_nii):
+    path = make_nii(np.zeros((4, 5, 6)), name="example.nii.gz")
+    sm = load_stat_map(path)
+    
+    assert sm.path == path
 
 def test_data_is_3d_float32_with_values_preserved(make_nii):
     data = np.zeros((4, 5, 6), dtype=np.float32)

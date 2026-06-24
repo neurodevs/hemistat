@@ -13,6 +13,7 @@ import numpy as np
 class StatMap:
     """A statistical map loaded from a NIfTI file."""
 
+    path: str
     data: np.ndarray          # float32 voxel data
 
 
@@ -21,4 +22,4 @@ def load_stat_map(path: str | Path) -> StatMap:
 
     img = nib.load(str(path))
     data = img.get_fdata().astype(np.float32)
-    return StatMap(data=data)
+    return StatMap(path=path, data=data)
