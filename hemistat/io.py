@@ -14,11 +14,12 @@ class StatMap:
     """A statistical map loaded from a NIfTI file."""
 
     path: Path
-    data: np.ndarray          # float32 voxel data
+    data: np.ndarray                  # float32 voxel data
+    affine: np.ndarray | None = None  # 4x4 voxel-to-mm transform
 
 
 def load_stat_map(path: str | Path) -> StatMap:
     """Load a NIfTI file into a StatMap."""
     img = nib.load(str(path))
     data = img.get_fdata().astype(np.float32)
-    return StatMap(path=Path(path), data=data)
+    return StatMap(path=Path(path), data=data, affine=img.affine)

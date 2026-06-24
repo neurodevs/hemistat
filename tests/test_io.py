@@ -29,6 +29,14 @@ def test_includes_path_in_statmap(make_nii):
     
     assert sm.path == path
 
+def test_includes_affine_in_statmap(make_nii):
+    path = make_nii(np.zeros((2, 2, 2)), affine=RADIOLOGICAL_AFFINE)
+    sm = load_stat_map(path)
+
+    assert sm.affine is not None
+    np.testing.assert_allclose(sm.affine, RADIOLOGICAL_AFFINE)
+
+
 def test_data_is_3d_float32_with_values_preserved(make_nii):
     data = np.zeros((4, 5, 6), dtype=np.float32)
     data[1, 2, 3] = 5.0
