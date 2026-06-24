@@ -9,6 +9,23 @@ import numpy as np
 from hemistat.io import StatMap
 
 
+def reflect_across_midline(data: np.ndarray, affine: np.ndarray) -> np.ndarray:
+    """Reflect the volume across the MNI x = 0 midline.
+
+    Returns an array where each voxel holds the value of its left/right mirror
+    (`out[x] == data[mirror_x]`); voxels whose mirror falls off the grid are
+    zero-filled.
+    """
+    a, t = affine[0, 0], affine[0, 3]
+    n = data.shape[0]
+    out = np.zeros_like(data)
+    for x in range(n):
+        mirror_x = round((-vox_to_mni(affine, x, 0) - t) / a)
+        if 0 <= mirror_x < n:
+            out[x] = data[mirror_x]
+    return out
+
+
 def vox_to_mni(affine: np.ndarray, idx: int, axis: int) -> float:
     """MNI mm coordinate for a voxel slice index along the given axis.
 

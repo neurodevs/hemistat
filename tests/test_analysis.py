@@ -19,6 +19,7 @@ from hemistat.analysis import (
     analyze_stat_map,
     calc_lateralization_score,
     mirror_pairs,
+    reflect_across_midline,
     split_hemispheres,
     vox_to_mni,
 )
@@ -261,3 +262,22 @@ def _lateralization_via_mirror_pairs(data, affine):
         unique_total += np.sum(np.abs(np.where(mirror_sl == 0, stat_sl, 0)))
         grand_total += np.sum(np.abs(stat_sl))
     return unique_total / grand_total if grand_total else 0.0
+
+def test_reflect_across_midline_mirrors_volume_over_midline():
+    # affine: mni_x = 2*i - 3  ->  mirrors 0<->3, 1<->2.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+    data[1, 0, 0] = 5.0   # left of midline; its mirror is x=2
+
+    mirrored = reflect_across_midline(data, affine)
+
+    expected = np.zeros((4, 1, 1), dtype=np.float32)
+    expected[2, 0, 0] = 5.0
+    np.testing.assert_array_equal(mirrored, expected)
