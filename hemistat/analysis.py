@@ -65,7 +65,11 @@ def lateralization_score(
     scores = []
     for idx, mirror_idx in pairs:
         stat_sl = np.take(data, idx, axis=axis)
-        mirror_sl = np.take(data, mirror_idx, axis=axis)
+        mirror_sl = (
+            np.take(data, mirror_idx, axis=axis)
+            if mirror_idx is not None
+            else np.zeros_like(stat_sl)
+        )
         unique = np.where(mirror_sl == 0, stat_sl, 0)
         total = np.sum(np.abs(stat_sl))
         scores.append(np.sum(np.abs(unique)) / total)

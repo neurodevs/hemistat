@@ -154,3 +154,13 @@ def test_lateralization_score_is_one_when_fully_lateralized():
     pairs = [(1, 2)]
 
     assert lateralization_score(data, pairs) == 1.0
+
+
+def test_lateralization_score_treats_none_mirror_as_fully_unique():
+    # mirror_pairs yields None when the mirror is off-grid: no counterpart
+    # exists, so all of the slice's activation is unique.
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+    data[1, 0, 0] = 5.0
+    pairs = [(1, None)]
+
+    assert lateralization_score(data, pairs) == 1.0
