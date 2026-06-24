@@ -14,8 +14,8 @@ class StatMap:
     """A statistical map loaded from a NIfTI file."""
 
     path: Path
-    data: np.ndarray                  # float32 voxel data
-    affine: np.ndarray | None = None  # 4x4 voxel-to-mm transform
+    data: np.ndarray    # float32 voxel data
+    affine: np.ndarray  # 4x4 voxel-to-mm transform
 
 
 def _to_single_volume(data: np.ndarray) -> np.ndarray:
