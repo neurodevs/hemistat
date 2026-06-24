@@ -18,14 +18,21 @@ class StatMap:
     affine: np.ndarray | None = None  # 4x4 voxel-to-mm transform
 
 
+def _to_single_volume(data: np.ndarray) -> np.ndarray:
+    """Reduce a NIfTI array to a single 3D volume.
+
+    A trailing singleton dimension (x, y, z, 1) is squeezed away; a genuine
+    multi-volume 4D array is ambiguous, so we refuse rather than guess.
+    """
+    if data.ndim != 4:
+        return data
+    if data.shape[3] == 1:
+        return data[..., 0]
+    raise ValueError(f"Expected a single 3D volume, got {data.shape[3]} volumes!")
+
+
 def load_stat_map(path: str | Path) -> StatMap:
     """Load a NIfTI file into a StatMap."""
     img = nib.load(str(path))
-    data = img.get_fdata().astype(np.float32)
-
-    if data.ndim == 4 and data.shape[3] == 1:
-        data = data[..., 0]
-    elif data.ndim == 4 and data.shape[3] > 1:
-        raise ValueError(f"Expected a single 3D volume, got {data.shape[3]} volumes!")
-
+    data = _to_single_volume(img.get_fdata().astype(np.float32))
     return StatMap(path=Path(path), data=data, affine=img.affine)
