@@ -56,13 +56,14 @@ def mirror_pairs(
 def calc_lateralization_score(
     data: np.ndarray, pairs: list[tuple[int, int | None]], axis: int = 0
 ) -> float:
-    """Mean fraction of activation per slice that is unique to its side.
+    """Fraction of total activation that is unique to its side.
 
-    For each (slice, mirror) pair, the per-slice score is the share of the
-    slice's activation whose mirror voxel is blank; the result is the mean over
-    pairs. 1.0 means fully lateralized.
+    Across all (slice, mirror) pairs, activation whose mirror voxel is blank is
+    pooled and divided by the total activation: a single global ratio, so the
+    result does not depend on how the volume is sliced. 1.0 means fully
+    lateralized; 0.0 when there is no activation.
     """
-    scores = []
+    unique_total, grand_total = 0.0, 0.0
     for idx, mirror_idx in pairs:
         stat_sl = np.take(data, idx, axis=axis)
         mirror_sl = (
@@ -70,10 +71,9 @@ def calc_lateralization_score(
             if mirror_idx is not None
             else np.zeros_like(stat_sl)
         )
-        unique = np.where(mirror_sl == 0, stat_sl, 0)
-        total = np.sum(np.abs(stat_sl))
-        scores.append(np.sum(np.abs(unique)) / total)
-    return float(np.mean(scores)) if scores else 0.0
+        unique_total += np.sum(np.abs(np.where(mirror_sl == 0, stat_sl, 0)))
+        grand_total += np.sum(np.abs(stat_sl))
+    return float(unique_total / grand_total) if grand_total > 0 else 0.0
 
 
 @dataclass(frozen=True)

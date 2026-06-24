@@ -203,3 +203,17 @@ def test_lateralization_score_is_partial_when_mirror_overlaps():
     pairs = [(1, 2)]
 
     assert calc_lateralization_score(data, pairs) == 0.5
+
+
+def test_lateralization_score_pools_voxels_globally_not_per_slice():
+    # Two mirror-partner slices with different totals. The grouping-invariant
+    # metric pools voxels: unique_total / grand_total, NOT the mean of per-slice
+    # ratios (which would give (2/3 + 0) / 2 = 1/3 here).
+    data = np.zeros((4, 1, 2), dtype=np.float32)
+    data[1, 0, 0] = 1.0   # slice 1, mirror (slice 2 @ z0) active -> shared
+    data[1, 0, 1] = 2.0   # slice 1, mirror (slice 2 @ z1) blank  -> unique
+    data[2, 0, 0] = 5.0   # slice 2, mirror (slice 1 @ z0) active -> shared
+    pairs = [(1, 2), (2, 1)]
+
+    # unique total = 2 (slice 1 @ z1); grand total = 3 + 5 = 8  ->  2 / 8
+    assert calc_lateralization_score(data, pairs) == 0.25
