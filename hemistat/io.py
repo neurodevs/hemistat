@@ -13,13 +13,12 @@ import numpy as np
 class StatMap:
     """A statistical map loaded from a NIfTI file."""
 
-    path: str
+    path: Path
     data: np.ndarray          # float32 voxel data
 
 
 def load_stat_map(path: str | Path) -> StatMap:
     """Load a NIfTI file into a StatMap."""
-
     img = nib.load(str(path))
     data = img.get_fdata().astype(np.float32)
-    return StatMap(path=path, data=data)
+    return StatMap(path=Path(path), data=data)
