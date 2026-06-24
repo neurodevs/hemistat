@@ -26,6 +26,9 @@ def main():
     )
     print(f"  mirror pairs:   {len(analysis.mirror)}")
     print(f"  lateralization: {analysis.lateralization_score:.3f}")
+    print("  regions (L / R):")
+    for name, left, right in analysis.sided_regions:
+        print(f"    {left:>5} / {right:<5} {name:<32} ")
 
 
 if __name__ == "__main__":

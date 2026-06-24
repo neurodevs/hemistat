@@ -27,6 +27,17 @@ from hemistat.analysis import (
 from hemistat.io import StatMap
 from tests.conftest import FakeLabeler
 
+
+@pytest.fixture(autouse=True)
+def _stub_atlas_labeler(monkeypatch):
+    """analyze_stat_map builds a real Harvard-Oxford labeler; stub it so region
+    extraction stays offline. Tests that assert on regions override this."""
+    monkeypatch.setattr(
+        "hemistat.analysis.harvard_oxford_labeler",
+        lambda target, fetch_atlas: FakeLabeler({}),
+    )
+
+
 # Typical MNI152 2mm affine: 2mm isotropic voxels, axis-aligned (diagonal).
 MNI_2MM_AFFINE = np.array(
     [
@@ -110,6 +121,34 @@ def test_analyze_includes_lateralization_score():
     analysis = analyze_stat_map(sm)
 
     assert analysis.lateralization_score == 1.0
+
+
+def test_analyze_includes_sided_regions(monkeypatch):
+    # affine: mni_x = 2*i - 3  ->  i=1 is left, i=3 is right.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+    data[1, 0, 0] = 1.0   # left
+    data[3, 0, 0] = 1.0   # right
+    sm = StatMap(path=Path("t.nii.gz"), data=data, affine=affine)
+
+    # Override the autouse stub with a labeler that names these voxels.
+    monkeypatch.setattr(
+        "hemistat.analysis.harvard_oxford_labeler",
+        lambda target, fetch_atlas: FakeLabeler(
+            {(1, 0, 0): "Thalamus", (3, 0, 0): "Thalamus"}
+        ),
+    )
+
+    analysis = analyze_stat_map(sm)
+
+    assert analysis.sided_regions == [("Thalamus", 1, 1)]
 
 
 def test_split_hemispheres_partitions_voxels_on_mni_x():

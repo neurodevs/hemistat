@@ -4,10 +4,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import nibabel as nib
 import numpy as np
+from nilearn.datasets import fetch_atlas_harvard_oxford
 
 from hemistat.io import StatMap
-from hemistat.regions import RegionLabeler, extract_regions, region_table
+from hemistat.regions import (
+    RegionLabeler,
+    extract_regions,
+    harvard_oxford_labeler,
+    region_table,
+)
 
 
 def reflect_across_midline(data: np.ndarray, affine: np.ndarray) -> np.ndarray:
@@ -102,14 +109,21 @@ class StatMapAnalysis:
     sagittal: list[int]                   # active slice indices, axis 0
     mirror: list[tuple[int, int | None]]  # (slice, geometric mirror) on axis 0
     lateralization_score: float           # global share of activation unique to its side
+    sided_regions: list[tuple[str, int, int]]  # (region, left, right); empty without a labeler
 
 
 def analyze_stat_map(sm: StatMap) -> StatMapAnalysis:
-    """Run the analysis leaves over a stat map and collect them."""
+    """Run the analysis leaves over a stat map and collect them.
+
+    Region labeling fetches the Harvard-Oxford atlas (cached after first use).
+    """
+    target = nib.Nifti1Image(sm.data, sm.affine)
+    labeler = harvard_oxford_labeler(target, fetch_atlas=fetch_atlas_harvard_oxford)
     return StatMapAnalysis(
         axial=active_slices(sm.data, axis=2),
         coronal=active_slices(sm.data, axis=1),
         sagittal=active_slices(sm.data, axis=0),
         mirror=mirror_pairs(sm.data, sm.affine, axis=0),
         lateralization_score=calc_lateralization_score(sm.data, sm.affine),
+        sided_regions=regions_by_hemisphere(sm, labeler),
     )
