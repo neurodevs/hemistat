@@ -9,10 +9,13 @@ result is just `affine[axis, axis] * idx + affine[axis, 3]`, independent of the
 off-axis voxel coords (and thus of volume shape).
 """
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
-from hemistat.analysis import active_slices, vox_to_mni
+from hemistat.analysis import active_slices, analyze_stat_map, vox_to_mni
+from hemistat.io import StatMap
 
 # Typical MNI152 2mm affine: 2mm isotropic voxels, axis-aligned (diagonal).
 MNI_2MM_AFFINE = np.array(
@@ -43,3 +46,18 @@ def test_active_slices_returns_indices_with_nonzero_voxels():
     data[:, :, 3] = -1.0  # axis-2 slice 3 active (negatives count too)
 
     assert active_slices(data, axis=2) == [1, 3]
+
+
+def test_analyze_collects_active_slices_per_axis():
+    # A single hot voxel is active on exactly one slice of each axis.
+    data = np.zeros((4, 4, 4), dtype=np.float32)
+    data[3, 2, 1] = 1.0
+    sm = StatMap(path=Path("t.nii.gz"), data=data)
+
+    analysis = analyze_stat_map(sm)
+
+    assert {
+        "axial": analysis.axial,
+        "coronal": analysis.coronal,
+        "sagittal": analysis.sagittal,
+    } == {"axial": [1], "coronal": [2], "sagittal": [3]}

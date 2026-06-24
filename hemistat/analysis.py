@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
+
+from hemistat.io import StatMap
 
 
 def vox_to_mni(affine: np.ndarray, idx: int, axis: int) -> float:
@@ -19,3 +23,21 @@ def active_slices(data: np.ndarray, axis: int) -> list[int]:
         i for i in range(data.shape[axis])
         if np.count_nonzero(np.take(data, i, axis=axis)) > 0
     ]
+
+
+@dataclass(frozen=True)
+class StatMapAnalysis:
+    """Results of analyzing a stat map, consumed by the renderer."""
+
+    axial: list[int]      # active slice indices, axis 2
+    coronal: list[int]    # active slice indices, axis 1
+    sagittal: list[int]   # active slice indices, axis 0
+
+
+def analyze_stat_map(sm: StatMap) -> StatMapAnalysis:
+    """Run the analysis leaves over a stat map and collect them."""
+    return StatMapAnalysis(
+        axial=active_slices(sm.data, axis=2),
+        coronal=active_slices(sm.data, axis=1),
+        sagittal=active_slices(sm.data, axis=0),
+    )
