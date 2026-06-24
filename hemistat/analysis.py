@@ -73,7 +73,7 @@ def lateralization_score(
         unique = np.where(mirror_sl == 0, stat_sl, 0)
         total = np.sum(np.abs(stat_sl))
         scores.append(np.sum(np.abs(unique)) / total)
-    return float(np.mean(scores))
+    return float(np.mean(scores)) if scores else 0.0
 
 
 @dataclass(frozen=True)

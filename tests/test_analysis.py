@@ -164,3 +164,10 @@ def test_lateralization_score_treats_none_mirror_as_fully_unique():
     pairs = [(1, None)]
 
     assert lateralization_score(data, pairs) == 1.0
+
+
+def test_lateralization_score_is_zero_when_no_pairs():
+    # No active slices -> nothing to measure -> 0.0 (not NaN).
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+
+    assert lateralization_score(data, []) == 0.0
