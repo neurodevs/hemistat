@@ -20,10 +20,12 @@ from hemistat.analysis import (
     calc_lateralization_score,
     mirror_pairs,
     reflect_across_midline,
+    regions_by_hemisphere,
     split_hemispheres,
     vox_to_mni,
 )
 from hemistat.io import StatMap
+from tests.conftest import FakeLabeler
 
 # Typical MNI152 2mm affine: 2mm isotropic voxels, axis-aligned (diagonal).
 MNI_2MM_AFFINE = np.array(
@@ -314,3 +316,23 @@ def test_reflect_across_midline_mirrors_volume_over_midline():
     expected = np.zeros((4, 1, 1), dtype=np.float32)
     expected[2, 0, 0] = 5.0
     np.testing.assert_array_equal(mirrored, expected)
+
+
+def test_regions_by_hemisphere_splits_labels_and_merges():
+    # affine: mni_x = 2*i - 3  ->  i=0,1 are left (x<=0); i=2,3 are right.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+    data[1, 0, 0] = 1.0   # left hemisphere
+    data[3, 0, 0] = 1.0   # right hemisphere
+    sm = StatMap(path=Path("t.nii.gz"), data=data, affine=affine)
+    labeler = FakeLabeler({(1, 0, 0): "Thalamus", (3, 0, 0): "Thalamus"})
+
+    # One voxel each side, same region -> a single row with both columns set.
+    assert regions_by_hemisphere(sm, labeler) == [("Thalamus", 1, 1)]

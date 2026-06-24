@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from hemistat.io import StatMap
+from hemistat.regions import RegionLabeler, extract_regions, region_table
 
 
 def reflect_across_midline(data: np.ndarray, affine: np.ndarray) -> np.ndarray:
@@ -49,6 +50,14 @@ def split_hemispheres(
     mni_xs = affine[0, 0] * np.arange(data.shape[0]) + affine[0, 3]
     is_left = (mni_xs <= 0)[:, np.newaxis, np.newaxis]
     return data * is_left, data * ~is_left
+
+
+def regions_by_hemisphere(
+    sm: StatMap, labeler: RegionLabeler
+) -> list[tuple[str, int, int]]:
+    """Per-hemisphere region counts: split on the midline, label each side, merge."""
+    left, right = split_hemispheres(sm.data, sm.affine)
+    return region_table(extract_regions(left, labeler), extract_regions(right, labeler))
 
 
 def mirror_pairs(

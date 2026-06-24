@@ -15,16 +15,7 @@ from hemistat.regions import (
     harvard_oxford_labeler,
     region_table,
 )
-
-
-class FakeLabeler:
-    """A RegionLabeler backed by an explicit {(i, j, k): name} map."""
-
-    def __init__(self, labels: dict[tuple[int, int, int], str]):
-        self._labels = labels
-
-    def label_at(self, vox: tuple[int, int, int]) -> str:
-        return self._labels.get(tuple(vox), "Unknown")
+from tests.conftest import FakeLabeler
 
 
 def test_extract_regions_counts_active_voxels_by_label():

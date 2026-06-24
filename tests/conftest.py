@@ -17,6 +17,16 @@ NEUROLOGICAL_AFFINE = np.diag([2.0, 2.0, 2.0, 1.0]).astype(np.float64)
 RADIOLOGICAL_AFFINE = np.diag([-2.0, 2.0, 2.0, 1.0]).astype(np.float64)
 
 
+class FakeLabeler:
+    """A RegionLabeler backed by an explicit {(i, j, k): name} map."""
+
+    def __init__(self, labels: dict[tuple[int, int, int], str]):
+        self._labels = labels
+
+    def label_at(self, vox: tuple[int, int, int]) -> str:
+        return self._labels.get(tuple(vox), "Unknown")
+
+
 @pytest.fixture
 def make_nii(tmp_path):
     """Return a factory that writes a synthetic .nii.gz and returns its path."""
