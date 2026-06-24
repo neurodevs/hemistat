@@ -17,7 +17,7 @@ import pytest
 from hemistat.analysis import (
     active_slices,
     analyze_stat_map,
-    lateralization_score,
+    calc_lateralization_score,
     mirror_pairs,
     split_hemispheres,
     vox_to_mni,
@@ -89,6 +89,26 @@ def test_analyze_includes_mirror_pairs():
     assert analysis.mirror == [(1, 2)]
 
 
+def test_analyze_includes_lateralization_score():
+    # affine: mni_x = 2*i - 3  ->  x=1 mirror (x=2) is blank, so the
+    # one active slice is fully lateralized -> score 1.0.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+    data[1, 0, 0] = 5.0
+    sm = StatMap(path=Path("t.nii.gz"), data=data, affine=affine)
+
+    analysis = analyze_stat_map(sm)
+
+    assert analysis.lateralization_score == 1.0
+
+
 def test_split_hemispheres_partitions_voxels_on_mni_x():
     # affine: mni_x = 2*i - 3  ->  i=0,1 are left (x<=0); i=2,3 are right (x>0).
     affine = np.array(
@@ -153,7 +173,7 @@ def test_lateralization_score_is_one_when_fully_lateralized():
     data[1, 0, 0] = 5.0
     pairs = [(1, 2)]
 
-    assert lateralization_score(data, pairs) == 1.0
+    assert calc_lateralization_score(data, pairs) == 1.0
 
 
 def test_lateralization_score_treats_none_mirror_as_fully_unique():
@@ -163,14 +183,14 @@ def test_lateralization_score_treats_none_mirror_as_fully_unique():
     data[1, 0, 0] = 5.0
     pairs = [(1, None)]
 
-    assert lateralization_score(data, pairs) == 1.0
+    assert calc_lateralization_score(data, pairs) == 1.0
 
 
 def test_lateralization_score_is_zero_when_no_pairs():
     # No active slices -> nothing to measure -> 0.0 (not NaN).
     data = np.zeros((4, 1, 1), dtype=np.float32)
 
-    assert lateralization_score(data, []) == 0.0
+    assert calc_lateralization_score(data, []) == 0.0
 
 
 def test_lateralization_score_is_partial_when_mirror_overlaps():
@@ -182,4 +202,4 @@ def test_lateralization_score_is_partial_when_mirror_overlaps():
     data[2, 0, 0] = 9.0   # mirror of (1, 0, 0)
     pairs = [(1, 2)]
 
-    assert lateralization_score(data, pairs) == 0.5
+    assert calc_lateralization_score(data, pairs) == 0.5

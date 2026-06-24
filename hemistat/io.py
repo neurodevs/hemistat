@@ -21,8 +21,8 @@ class StatMap:
 def _to_single_volume(data: np.ndarray) -> np.ndarray:
     """Reduce a NIfTI array to a single 3D volume.
 
-    A trailing singleton dimension (x, y, z, 1) is squeezed away; a genuine
-    multi-volume 4D array is ambiguous, so we refuse rather than guess.
+    A trailing singleton dimension (x, y, z, 1) is squeezed away; it raises on 
+    ambiguous multi-volume 4D arrays rather than guessing which to use.
     """
     if data.ndim != 4:
         return data
