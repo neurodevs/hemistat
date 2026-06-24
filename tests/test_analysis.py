@@ -12,7 +12,7 @@ off-axis voxel coords (and thus of volume shape).
 import numpy as np
 import pytest
 
-from hemistat.analysis import vox_to_mni
+from hemistat.analysis import active_slices, vox_to_mni
 
 # Typical MNI152 2mm affine: 2mm isotropic voxels, axis-aligned (diagonal).
 MNI_2MM_AFFINE = np.array(
@@ -35,3 +35,11 @@ MNI_2MM_AFFINE = np.array(
 )
 def test_maps_slice_index_to_mm(axis, idx, expected_mm):
     assert vox_to_mni(MNI_2MM_AFFINE, idx, axis) == expected_mm
+
+
+def test_active_slices_returns_indices_with_nonzero_voxels():
+    data = np.zeros((4, 4, 4), dtype=np.float32)
+    data[:, :, 1] = 2.0   # axis-2 slice 1 active
+    data[:, :, 3] = -1.0  # axis-2 slice 3 active (negatives count too)
+
+    assert active_slices(data, axis=2) == [1, 3]
