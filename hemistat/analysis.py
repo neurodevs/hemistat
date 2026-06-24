@@ -97,11 +97,10 @@ class StatMapAnalysis:
 
 def analyze_stat_map(sm: StatMap) -> StatMapAnalysis:
     """Run the analysis leaves over a stat map and collect them."""
-    mirror = mirror_pairs(sm.data, sm.affine, axis=0)
     return StatMapAnalysis(
         axial=active_slices(sm.data, axis=2),
         coronal=active_slices(sm.data, axis=1),
         sagittal=active_slices(sm.data, axis=0),
-        mirror=mirror,
+        mirror=mirror_pairs(sm.data, sm.affine, axis=0),
         lateralization_score=calc_lateralization_score(sm.data, sm.affine),
     )

@@ -33,6 +33,6 @@ def _to_single_volume(data: np.ndarray) -> np.ndarray:
 
 def load_stat_map(path: str | Path) -> StatMap:
     """Load a NIfTI file into a StatMap."""
-    img = nib.load(str(path))
+    img = nib.as_closest_canonical(nib.load(str(path)))
     data = _to_single_volume(img.get_fdata().astype(np.float32))
     return StatMap(path=Path(path), data=data, affine=img.affine)

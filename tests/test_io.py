@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from hemistat.io import load_stat_map, StatMap
-from tests.conftest import RADIOLOGICAL_AFFINE
+from tests.conftest import NEUROLOGICAL_AFFINE
 
 @pytest.fixture(autouse=True)
 def before_each():
@@ -30,11 +30,31 @@ def test_includes_path_in_statmap(make_nii):
     assert sm.path == path
 
 def test_includes_affine_in_statmap(make_nii):
-    path = make_nii(np.zeros((2, 2, 2)), affine=RADIOLOGICAL_AFFINE)
+    path = make_nii(np.zeros((2, 2, 2)), affine=NEUROLOGICAL_AFFINE)
     sm = load_stat_map(path)
 
     assert sm.affine is not None
-    np.testing.assert_allclose(sm.affine, RADIOLOGICAL_AFFINE)
+    np.testing.assert_allclose(sm.affine, NEUROLOGICAL_AFFINE)
+
+
+def test_load_canonicalizes_permuted_axes_to_diagonal(make_nii):
+    # Voxel axes map to world (Y, Z, X): axis-aligned but NOT diagonal.
+    # Canonicalizing to RAS should reorder them into a diagonal affine.
+    permuted = np.array(
+        [
+            [0.0, 0.0, 2.0, -10.0],
+            [2.0, 0.0, 0.0, -20.0],
+            [0.0, 2.0, 0.0, -30.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    path = make_nii(np.zeros((2, 3, 4)), affine=permuted)
+
+    sm = load_stat_map(path)
+
+    rotation = sm.affine[:3, :3]
+    off_diagonal = rotation - np.diag(np.diagonal(rotation))
+    np.testing.assert_allclose(off_diagonal, np.zeros((3, 3)), atol=1e-6)
 
 
 def test_data_is_3d_float32_with_values_preserved(make_nii):
