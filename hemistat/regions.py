@@ -62,6 +62,21 @@ def extract_regions(mask: np.ndarray, labeler: RegionLabeler) -> dict[str, int]:
     return counts
 
 
+def region_table(
+    left: dict[str, int], right: dict[str, int]
+) -> list[tuple[str, int, int]]:
+    """Merge per-hemisphere region counts into (name, left, right) rows.
+
+    Sorted by combined count (most active first); a region absent on one side
+    gets 0 there, so one-sided activation is visible.
+    """
+    names = sorted(
+        left.keys() | right.keys(),
+        key=lambda n: -(left.get(n, 0) + right.get(n, 0)),
+    )
+    return [(n, left.get(n, 0), right.get(n, 0)) for n in names]
+
+
 def harvard_oxford_labeler(
     target_img, fetch_atlas: Callable[[str], object]
 ) -> AtlasLabeler:

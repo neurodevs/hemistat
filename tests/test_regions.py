@@ -9,7 +9,12 @@ import types
 import nibabel as nib
 import numpy as np
 
-from hemistat.regions import AtlasLabeler, extract_regions, harvard_oxford_labeler
+from hemistat.regions import (
+    AtlasLabeler,
+    extract_regions,
+    harvard_oxford_labeler,
+    region_table,
+)
 
 
 class FakeLabeler:
@@ -145,3 +150,15 @@ def test_harvard_oxford_labeler_builds_from_fetched_atlases():
     # Both atlases wired through: cortical voxel and subcortical voxel resolve.
     resolved = (labeler.label_at((0, 0, 0)), labeler.label_at((1, 0, 0)))
     assert resolved == ("Precentral Gyrus", "Thalamus")
+
+
+def test_region_table_merges_left_and_right_counts():
+    left = {"Thalamus": 50, "Insular Cortex": 10}
+    right = {"Thalamus": 12, "Precentral Gyrus": 30}
+
+    # (name, left, right), sorted by combined count; absent side -> 0.
+    assert region_table(left, right) == [
+        ("Thalamus", 50, 12),         # combined 62
+        ("Precentral Gyrus", 0, 30),  # combined 30, left-absent
+        ("Insular Cortex", 10, 0),    # combined 10, right-absent
+    ]
