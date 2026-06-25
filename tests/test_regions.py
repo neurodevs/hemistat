@@ -14,6 +14,8 @@ from hemistat.regions import (
     extract_regions,
     harvard_oxford_labeler,
     region_table,
+    region_totals,
+    region_totals_ratio,
 )
 from tests.conftest import FakeLabeler
 
@@ -171,3 +173,14 @@ def test_region_table_merges_left_and_right_counts():
         ("Precentral Gyrus", 0, 30),  # combined 30, left-absent
         ("Insular Cortex", 10, 0),    # combined 10, right-absent
     ]
+
+
+def test_region_totals_sums_each_side():
+    rows = [("Thalamus", 50, 12), ("Insular Cortex", 10, 0)]
+
+    assert region_totals(rows) == (60, 12)
+
+
+def test_region_totals_ratio_normalizes_smaller_side_to_one():
+    # 448 : 256  ->  divide by the smaller side so it becomes 1.0.
+    assert region_totals_ratio(448, 256) == (1.75, 1.0)

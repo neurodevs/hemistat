@@ -101,6 +101,17 @@ def region_table(
     return [(n, left.get(n, 0), right.get(n, 0)) for n in names]
 
 
+def region_totals(rows: list[tuple[str, int, int]]) -> tuple[int, int]:
+    """Total (left, right) voxel counts across region rows."""
+    return sum(r[1] for r in rows), sum(r[2] for r in rows)
+
+
+def region_totals_ratio(left: int, right: int) -> tuple[float, float]:
+    """L:R ratio normalized so the smaller side is 1.0."""
+    smaller = min(left, right)
+    return (left / smaller, right / smaller)
+
+
 def harvard_oxford_labeler(
     target_img, fetch_atlas: Callable[[str], object]
 ) -> AtlasLabeler:
