@@ -8,16 +8,22 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import cached_property
 from nilearn.image import resample_to_img
 from typing import Protocol
 
 import numpy as np
+from scipy.spatial import cKDTree
+
+WHITE_MATTER = "Cerebral White Matter"
 
 
 class RegionLabeler(Protocol):
     """Maps a voxel coordinate to an atlas region name."""
 
     def label_at(self, vox: tuple[int, int, int]) -> str: ...
+
+    def nearest_cortical(self, vox: tuple[int, int, int]) -> str: ...
 
 
 @dataclass
@@ -44,6 +50,28 @@ class AtlasLabeler:
             return self.sub_labels[si]
         return "Unknown"
 
+    def nearest_cortical(self, vox: tuple[int, int, int]) -> str:
+        """Region of the cortical-labeled voxel closest to `vox`."""
+        _, idx = self._cort_tree.query(vox)
+        i, j, k = self._cort_points[idx]
+        return self.cort_labels[int(self.cort[i, j, k])]
+
+    @cached_property
+    def _cort_points(self) -> np.ndarray:
+        return np.argwhere(self.cort > 0)
+
+    @cached_property
+    def _cort_tree(self) -> cKDTree:
+        return cKDTree(self._cort_points)
+
+
+def strip_hemisphere(name: str) -> str:
+    """Drop a leading 'Left '/'Right ' hemisphere prefix from an atlas label."""
+    for prefix in ("Left ", "Right "):
+        if name.startswith(prefix):
+            return name[len(prefix):]
+    return name
+
 
 def extract_regions(mask: np.ndarray, labeler: RegionLabeler) -> dict[str, int]:
     """Count active (non-zero) voxels in `mask`, grouped by atlas label.
@@ -53,11 +81,7 @@ def extract_regions(mask: np.ndarray, labeler: RegionLabeler) -> dict[str, int]:
     """
     counts: dict[str, int] = {}
     for vox in np.argwhere(mask != 0):
-        name = labeler.label_at(tuple(vox))
-        for prefix in ("Left ", "Right "):
-            if name.startswith(prefix):
-                name = name[len(prefix):]
-                break
+        name = strip_hemisphere(labeler.label_at(tuple(vox)))
         counts[name] = counts.get(name, 0) + 1
     return counts
 

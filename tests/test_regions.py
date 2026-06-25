@@ -115,6 +115,24 @@ def test_atlas_labeler_prefers_cortical_over_subcortical():
     assert labeler.label_at((0, 0, 0)) == "Precentral Gyrus"
 
 
+def test_atlas_labeler_keeps_white_matter_but_exposes_nearest_cortical():
+    cort = np.zeros((3, 1, 1), dtype=int)
+    cort[0, 0, 0] = 1   # Precentral Gyrus at x=0
+    sub = np.zeros((3, 1, 1), dtype=int)
+    sub[1, 0, 0] = 1    # Cerebral White Matter at x=1 (no cortical label there)
+
+    labeler = AtlasLabeler(
+        cort=cort,
+        cort_labels=["Background", "Precentral Gyrus"],
+        sub=sub,
+        sub_labels=["Background", "Cerebral White Matter"],
+    )
+
+    # WM stays its own label; nearest_cortical exposes the closest cortical region.
+    assert labeler.label_at((1, 0, 0)) == "Cerebral White Matter"
+    assert labeler.nearest_cortical((1, 0, 0)) == "Precentral Gyrus"
+
+
 def test_harvard_oxford_labeler_builds_from_fetched_atlases():
     # Fake fetch returns synthetic atlases on the target grid -> no network.
     affine = np.eye(4)

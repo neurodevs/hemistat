@@ -23,8 +23,10 @@ from hemistat.analysis import (
     regions_by_hemisphere,
     split_hemispheres,
     vox_to_mni,
+    wm_subregions,
 )
 from hemistat.io import StatMap
+from hemistat.regions import AtlasLabeler
 from tests.conftest import FakeLabeler
 
 
@@ -149,6 +151,75 @@ def test_analyze_includes_sided_regions(monkeypatch):
     analysis = analyze_stat_map(sm)
 
     assert analysis.sided_regions == [("Thalamus", 1, 1)]
+
+
+def test_analyze_includes_wm_subregions(monkeypatch):
+    # affine: mni_x = 2*i - 3  ->  i=1 is left.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    cort = np.zeros((4, 1, 1), dtype=int)
+    cort[0, 0, 0] = 1   # Precentral Gyrus
+    sub = np.zeros((4, 1, 1), dtype=int)
+    sub[1, 0, 0] = 1    # Left WM, nearest cortical = Precentral
+    labeler = AtlasLabeler(
+        cort=cort,
+        cort_labels=["Background", "Precentral Gyrus"],
+        sub=sub,
+        sub_labels=["Background", "Left Cerebral White Matter"],
+    )
+    monkeypatch.setattr(
+        "hemistat.analysis.harvard_oxford_labeler",
+        lambda target, fetch_atlas: labeler,
+    )
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+    data[1, 0, 0] = 1.0
+    sm = StatMap(path=Path("t.nii.gz"), data=data, affine=affine)
+
+    analysis = analyze_stat_map(sm)
+
+    assert analysis.wm_subregions == [("Precentral Gyrus", 1, 0)]
+
+
+def test_wm_subregions_breaks_down_white_matter_by_nearest_cortical():
+    # affine: mni_x = 2*i - 3  ->  i=0,1 left; i=2,3 right.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    cort = np.zeros((4, 1, 2), dtype=int)
+    cort[0, 0, 0] = 1   # Precentral Gyrus (left)
+    cort[3, 0, 0] = 2   # Insular Cortex (right)
+    sub = np.zeros((4, 1, 2), dtype=int)
+    sub[1, 0, 0] = 1    # Left WM   (nearest cortical = Precentral)
+    sub[1, 0, 1] = 1    # Left WM   (nearest cortical = Precentral)
+    sub[2, 0, 0] = 2    # Right WM  (nearest cortical = Insular)
+    labeler = AtlasLabeler(
+        cort=cort,
+        cort_labels=["Background", "Precentral Gyrus", "Insular Cortex"],
+        sub=sub,
+        # Real Harvard-Oxford WM labels are hemisphere-prefixed.
+        sub_labels=["Background", "Left Cerebral White Matter", "Right Cerebral White Matter"],
+    )
+    data = np.zeros((4, 1, 2), dtype=np.float32)
+    data[1, 0, 0] = 1.0
+    data[1, 0, 1] = 1.0
+    data[2, 0, 0] = 1.0
+    sm = StatMap(path=Path("t.nii.gz"), data=data, affine=affine)
+
+    assert wm_subregions(sm, labeler) == [
+        ("Precentral Gyrus", 2, 0),
+        ("Insular Cortex", 0, 1),
+    ]
 
 
 def test_split_hemispheres_partitions_voxels_on_mni_x():

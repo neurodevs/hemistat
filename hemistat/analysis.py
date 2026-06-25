@@ -10,10 +10,12 @@ from nilearn.datasets import fetch_atlas_harvard_oxford
 
 from hemistat.io import StatMap
 from hemistat.regions import (
+    WHITE_MATTER,
     RegionLabeler,
     extract_regions,
     harvard_oxford_labeler,
     region_table,
+    strip_hemisphere,
 )
 
 
@@ -67,6 +69,25 @@ def regions_by_hemisphere(
     return region_table(extract_regions(left, labeler), extract_regions(right, labeler))
 
 
+def _wm_counts(mask: np.ndarray, labeler: RegionLabeler) -> dict[str, int]:
+    """Count white-matter voxels in `mask` by their nearest cortical region."""
+    counts: dict[str, int] = {}
+    for vox in np.argwhere(mask != 0):
+        v = tuple(vox)
+        if strip_hemisphere(labeler.label_at(v)) == WHITE_MATTER:
+            name = labeler.nearest_cortical(v)
+            counts[name] = counts.get(name, 0) + 1
+    return counts
+
+
+def wm_subregions(
+    sm: StatMap, labeler: RegionLabeler
+) -> list[tuple[str, int, int]]:
+    """Break white-matter voxels down by nearest cortical region, per hemisphere."""
+    left, right = split_hemispheres(sm.data, sm.affine)
+    return region_table(_wm_counts(left, labeler), _wm_counts(right, labeler))
+
+
 def mirror_pairs(
     data: np.ndarray, affine: np.ndarray, axis: int = 0
 ) -> list[tuple[int, int | None]]:
@@ -109,7 +130,8 @@ class StatMapAnalysis:
     sagittal: list[int]                   # active slice indices, axis 0
     mirror: list[tuple[int, int | None]]  # (slice, geometric mirror) on axis 0
     lateralization_score: float           # global share of activation unique to its side
-    sided_regions: list[tuple[str, int, int]]  # (region, left, right); empty without a labeler
+    sided_regions: list[tuple[str, int, int]]    # (region, left, right)
+    wm_subregions: list[tuple[str, int, int]]    # white matter broken down by nearest cortical
 
 
 def analyze_stat_map(sm: StatMap) -> StatMapAnalysis:
@@ -126,4 +148,5 @@ def analyze_stat_map(sm: StatMap) -> StatMapAnalysis:
         mirror=mirror_pairs(sm.data, sm.affine, axis=0),
         lateralization_score=calc_lateralization_score(sm.data, sm.affine),
         sided_regions=regions_by_hemisphere(sm, labeler),
+        wm_subregions=wm_subregions(sm, labeler),
     )

@@ -26,6 +26,9 @@ class FakeLabeler:
     def label_at(self, vox: tuple[int, int, int]) -> str:
         return self._labels.get(tuple(vox), "Unknown")
 
+    def nearest_cortical(self, vox: tuple[int, int, int]) -> str:
+        return "Unknown"
+
 
 @pytest.fixture
 def make_nii(tmp_path):
