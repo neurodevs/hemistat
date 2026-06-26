@@ -30,9 +30,10 @@ def main():
     print("  regions (L / R):")
     total_left, total_right = region_totals(analysis.sided_regions)
     ratio_left, ratio_right = region_totals_ratio(total_left, total_right)
+    side = "L" if ratio_left >= ratio_right else "R"
+    dominant = max(ratio_left, ratio_right)
     print(
-        f"    {total_left:>5} / {total_right:<5} TOTAL "
-        f"(L {ratio_left:.1f} : R {ratio_right:.1f})"
+        f"    {total_left:>5} / {total_right:<5} TOTAL  ({side} {dominant:.2f} : 1)"
     )
     for name, left, right in analysis.sided_regions:
         print(f"    {left:>5} / {right:<5} {name}")
