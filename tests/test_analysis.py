@@ -9,6 +9,7 @@ result is just `affine[axis, axis] * idx + affine[axis, 3]`, independent of the
 off-axis voxel coords (and thus of volume shape).
 """
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -21,6 +22,7 @@ from hemistat.analysis import (
     mirror_pairs,
     reflect_across_midline,
     regions_by_hemisphere,
+    save_json_results,
     split_hemispheres,
     vox_to_mni,
     wm_subregions,
@@ -446,3 +448,42 @@ def test_regions_by_hemisphere_splits_labels_and_merges():
 
     # One voxel each side, same region -> a single row with both columns set.
     assert regions_by_hemisphere(sm, labeler) == [("Thalamus", 1, 1)]
+
+
+def test_save_json_results_writes_analysis_as_json(tmp_path, monkeypatch):
+    # affine: mni_x = 2*i - 3  ->  i=1 is left, i=3 is right.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+    data[1, 0, 0] = 1.0   # left
+    data[3, 0, 0] = 1.0   # right
+    sm = StatMap(path=Path("t.nii.gz"), data=data, affine=affine)
+
+    # Fake the labeler so region extraction stays offline and deterministic.
+    monkeypatch.setattr(
+        "hemistat.analysis.harvard_oxford_labeler",
+        lambda target, fetch_atlas: FakeLabeler(
+            {(1, 0, 0): "Thalamus", (3, 0, 0): "Thalamus"}
+        ),
+    )
+    analysis = analyze_stat_map(sm)
+
+    json_results_path = tmp_path / "results.json"
+    save_json_results(analysis, json_results_path)
+
+    written = json.loads(json_results_path.read_text())
+    assert written == {
+        "axial": [0],
+        "coronal": [0],
+        "sagittal": [1, 3],
+        "mirror": [[1, 2], [3, 0]],
+        "lateralization_score": 1.0,
+        "sided_regions": [["Thalamus", 1, 1]],
+        "wm_subregions": [],
+    }

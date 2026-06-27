@@ -7,7 +7,9 @@ Usage:
 
 import argparse
 
-from hemistat.analysis import analyze_stat_map
+from pathlib import Path
+
+from hemistat.analysis import analyze_stat_map, save_json_results
 from hemistat.io import load_stat_map
 from hemistat.regions import WHITE_MATTER, region_totals, region_totals_ratio
 
@@ -19,6 +21,8 @@ def main():
 
     sm = load_stat_map(args.nii_path)
     analysis = analyze_stat_map(sm)
+    stem = Path(args.nii_path).name.removesuffix(".gz").removesuffix(".nii")
+    save_json_results(analysis, f"./artifacts/{stem}.json")
 
     print("\n", sm.path.name)
     print(

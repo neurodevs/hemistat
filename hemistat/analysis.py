@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
+from pathlib import Path
 
 import nibabel as nib
 import numpy as np
@@ -132,6 +134,11 @@ class StatMapAnalysis:
     lateralization_score: float           # global share of activation unique to its side
     sided_regions: list[tuple[str, int, int]]    # (region, left, right)
     wm_subregions: list[tuple[str, int, int]]    # white matter broken down by nearest cortical
+
+
+def save_json_results(analysis: StatMapAnalysis, json_results_path) -> None:
+    """Serialize a StatMapAnalysis to JSON at json_results_path."""
+    Path(json_results_path).write_text(json.dumps(asdict(analysis)))
 
 
 def analyze_stat_map(sm: StatMap) -> StatMapAnalysis:
