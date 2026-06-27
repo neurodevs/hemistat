@@ -155,6 +155,42 @@ def test_analyze_includes_sided_regions(monkeypatch):
     assert analysis.sided_regions == [("Thalamus", 1, 1)]
 
 
+def test_analyze_includes_region_laterality(monkeypatch):
+    # affine: mni_x = 2*i - 3  ->  i=0,1 are left (x<=0); i=3 is right.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    data = np.zeros((4, 1, 1), dtype=np.float32)
+    data[0, 0, 0] = 1.0   # left  (Insular)
+    data[1, 0, 0] = 1.0   # left  (Insular)
+    data[3, 0, 0] = 1.0   # right (Thalamus)
+    sm = StatMap(path=Path("t.nii.gz"), data=data, affine=affine)
+
+    monkeypatch.setattr(
+        "hemistat.analysis.harvard_oxford_labeler",
+        lambda target, fetch_atlas: FakeLabeler(
+            {
+                (0, 0, 0): "Insular Cortex",
+                (1, 0, 0): "Insular Cortex",
+                (3, 0, 0): "Thalamus",
+            }
+        ),
+    )
+
+    analysis = analyze_stat_map(sm)
+
+    # Insular is left-only (+1.0); Thalamus is right-only (-1.0).
+    assert analysis.region_laterality == [
+        ("Insular Cortex", 1.0),
+        ("Thalamus", -1.0),
+    ]
+
+
 def test_analyze_includes_wm_subregions(monkeypatch):
     # affine: mni_x = 2*i - 3  ->  i=1 is left.
     affine = np.array(
@@ -186,6 +222,48 @@ def test_analyze_includes_wm_subregions(monkeypatch):
     analysis = analyze_stat_map(sm)
 
     assert analysis.wm_subregions == [("Precentral Gyrus", 1, 0)]
+
+
+def test_analyze_includes_wm_laterality(monkeypatch):
+    # affine: mni_x = 2*i - 3  ->  i=0,1 left; i=2,3 right.
+    affine = np.array(
+        [
+            [2.0, 0.0, 0.0, -3.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    cort = np.zeros((4, 1, 2), dtype=int)
+    cort[0, 0, 0] = 1   # Precentral Gyrus (left)
+    cort[3, 0, 0] = 2   # Insular Cortex (right)
+    sub = np.zeros((4, 1, 2), dtype=int)
+    sub[1, 0, 0] = 1    # Left WM   (nearest cortical = Precentral)
+    sub[1, 0, 1] = 1    # Left WM   (nearest cortical = Precentral)
+    sub[2, 0, 0] = 2    # Right WM  (nearest cortical = Insular)
+    labeler = AtlasLabeler(
+        cort=cort,
+        cort_labels=["Background", "Precentral Gyrus", "Insular Cortex"],
+        sub=sub,
+        sub_labels=["Background", "Left Cerebral White Matter", "Right Cerebral White Matter"],
+    )
+    monkeypatch.setattr(
+        "hemistat.analysis.harvard_oxford_labeler",
+        lambda target, fetch_atlas: labeler,
+    )
+    data = np.zeros((4, 1, 2), dtype=np.float32)
+    data[1, 0, 0] = 1.0
+    data[1, 0, 1] = 1.0
+    data[2, 0, 0] = 1.0
+    sm = StatMap(path=Path("t.nii.gz"), data=data, affine=affine)
+
+    analysis = analyze_stat_map(sm)
+
+    # Precentral WM is left-only (+1.0); Insular WM is right-only (-1.0).
+    assert analysis.wm_laterality == [
+        ("Precentral Gyrus", 1.0),
+        ("Insular Cortex", -1.0),
+    ]
 
 
 def test_wm_subregions_breaks_down_white_matter_by_nearest_cortical():
@@ -485,5 +563,7 @@ def test_save_json_results_writes_analysis_as_json(tmp_path, monkeypatch):
         "mirror": [[1, 2], [3, 0]],
         "lateralization_score": 1.0,
         "sided_regions": [["Thalamus", 1, 1]],
+        "region_laterality": [["Thalamus", 0.0]],
         "wm_subregions": [],
+        "wm_laterality": [],
     }

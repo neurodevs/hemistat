@@ -16,6 +16,7 @@ from hemistat.regions import (
     RegionLabeler,
     extract_regions,
     harvard_oxford_labeler,
+    laterality_index,
     region_table,
     strip_hemisphere,
 )
@@ -133,7 +134,9 @@ class StatMapAnalysis:
     mirror: list[tuple[int, int | None]]  # (slice, geometric mirror) on axis 0
     lateralization_score: float           # global share of activation unique to its side
     sided_regions: list[tuple[str, int, int]]    # (region, left, right)
+    region_laterality: list[tuple[str, float]]   # (region, LI); +1 left, -1 right
     wm_subregions: list[tuple[str, int, int]]    # white matter broken down by nearest cortical
+    wm_laterality: list[tuple[str, float]]       # (wm subregion, LI); +1 left, -1 right
 
 
 def save_json_results(analysis: StatMapAnalysis, json_results_path) -> None:
@@ -148,12 +151,16 @@ def analyze_stat_map(sm: StatMap) -> StatMapAnalysis:
     """
     target = nib.Nifti1Image(sm.data, sm.affine)
     labeler = harvard_oxford_labeler(target, fetch_atlas=fetch_atlas_harvard_oxford)
+    sided_regions = regions_by_hemisphere(sm, labeler)
+    wm_subs = wm_subregions(sm, labeler)
     return StatMapAnalysis(
         axial=active_slices(sm.data, axis=2),
         coronal=active_slices(sm.data, axis=1),
         sagittal=active_slices(sm.data, axis=0),
         mirror=mirror_pairs(sm.data, sm.affine, axis=0),
         lateralization_score=calc_lateralization_score(sm.data, sm.affine),
-        sided_regions=regions_by_hemisphere(sm, labeler),
-        wm_subregions=wm_subregions(sm, labeler),
+        sided_regions=sided_regions,
+        region_laterality=laterality_index(sided_regions),
+        wm_subregions=wm_subs,
+        wm_laterality=laterality_index(wm_subs),
     )

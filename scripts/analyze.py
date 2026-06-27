@@ -31,20 +31,25 @@ def main():
     )
     print(f"  mirror pairs:   {len(analysis.mirror)}")
     print(f"  lateralization: {analysis.lateralization_score:.3f}")
-    print("  regions (L / R):")
+    print("  regions (L / R, LI: +1 left .. -1 right):")
     total_left, total_right = region_totals(analysis.sided_regions)
     ratio_left, ratio_right = region_totals_ratio(total_left, total_right)
     side = "L" if ratio_left >= ratio_right else "R"
     dominant = max(ratio_left, ratio_right)
     print(
-        f"    {total_left:>5} / {total_right:<5} TOTAL  ({side} {dominant:.2f} : 1)"
+        f"    {total_left:>5} / {total_right:<5}        TOTAL  ({side} {dominant:.2f} : 1)"
     )
+    li_by_name = dict(analysis.region_laterality)
+    wm_li_by_name = dict(analysis.wm_laterality)
     for name, left, right in analysis.sided_regions:
-        print(f"    {left:>5} / {right:<5} {name}")
+        print(f"    {left:>5} / {right:<5} {li_by_name[name]:>+5.2f}  {name}")
         # White matter has no cortical label; show where it was re-mapped to.
         if name == WHITE_MATTER:
             for sub_name, sub_left, sub_right in analysis.wm_subregions:
-                print(f"          ↳ {sub_left:>4} / {sub_right:<4} {sub_name} (WM)")
+                print(
+                    f"          ↳ {sub_left:>4} / {sub_right:<4} "
+                    f"{wm_li_by_name[sub_name]:>+5.2f}  {sub_name} (WM)"
+                )
 
 
 if __name__ == "__main__":
