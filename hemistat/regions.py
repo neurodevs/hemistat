@@ -112,6 +112,18 @@ def region_totals_ratio(left: int, right: int) -> tuple[float, float]:
     return (left / smaller, right / smaller)
 
 
+def laterality_index(
+    rows: list[tuple[str, int, int]]
+) -> list[tuple[str, float]]:
+    """Per-region laterality index LI = (L - R) / (L + R).
+
+    +1 is fully left-lateralized, -1 fully right, 0 symmetric. Input order is
+    preserved. Regions reach this table only when present on at least one side,
+    so L + R > 0 always holds.
+    """
+    return [(name, (left - right) / (left + right)) for name, left, right in rows]
+
+
 def harvard_oxford_labeler(
     target_img, fetch_atlas: Callable[[str], object]
 ) -> AtlasLabeler:

@@ -13,6 +13,7 @@ from hemistat.regions import (
     AtlasLabeler,
     extract_regions,
     harvard_oxford_labeler,
+    laterality_index,
     region_table,
     region_totals,
     region_totals_ratio,
@@ -184,3 +185,18 @@ def test_region_totals_sums_each_side():
 def test_region_totals_ratio_normalizes_smaller_side_to_one():
     # 448 : 256  ->  divide by the smaller side so it becomes 1.0.
     assert region_totals_ratio(448, 256) == (1.75, 1.0)
+
+
+def test_laterality_index_scores_each_region_left_positive():
+    rows = [
+        ("Insular Cortex", 30, 10),   # left-dominant
+        ("Thalamus", 20, 20),         # symmetric
+        ("Precentral Gyrus", 0, 15),  # right only
+    ]
+
+    # LI = (L - R) / (L + R): +1 fully left, -1 fully right, 0 symmetric.
+    assert laterality_index(rows) == [
+        ("Insular Cortex", 0.5),
+        ("Thalamus", 0.0),
+        ("Precentral Gyrus", -1.0),
+    ]
