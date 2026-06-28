@@ -184,10 +184,10 @@ def test_analyze_includes_region_laterality(monkeypatch):
 
     analysis = analyze_stat_map(sm)
 
-    # Insular is left-only (+1.0); Thalamus is right-only (-1.0).
+    # Right-positive: Insular is left-only (-1.0); Thalamus is right-only (+1.0).
     assert analysis.region_laterality == [
-        ("Insular Cortex", 1.0),
-        ("Thalamus", -1.0),
+        ("Insular Cortex", -1.0),
+        ("Thalamus", 1.0),
     ]
 
 
@@ -259,10 +259,10 @@ def test_analyze_includes_wm_laterality(monkeypatch):
 
     analysis = analyze_stat_map(sm)
 
-    # Precentral WM is left-only (+1.0); Insular WM is right-only (-1.0).
+    # Right-positive: Precentral WM is left-only (-1.0); Insular WM is right-only (+1.0).
     assert analysis.wm_laterality == [
-        ("Precentral Gyrus", 1.0),
-        ("Insular Cortex", -1.0),
+        ("Precentral Gyrus", -1.0),
+        ("Insular Cortex", 1.0),
     ]
 
 

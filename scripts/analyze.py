@@ -14,6 +14,15 @@ from hemistat.io import load_stat_map
 from hemistat.regions import WHITE_MATTER, region_totals, region_totals_ratio
 
 
+def side_letter(li: float) -> str:
+    """L/R tag for a laterality index (right-positive); blank when symmetric."""
+    if li > 0:
+        return "R"
+    if li < 0:
+        return "L"
+    return " "
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("nii_path", help="Path to a .nii or .nii.gz stat map")
@@ -31,7 +40,7 @@ def main():
     )
     print(f"  mirror pairs:   {len(analysis.mirror)}")
     print(f"  lateralization: {analysis.lateralization_score:.3f}")
-    print("  regions (L / R, LI: +1 left .. -1 right):")
+    print("  regions (L / R, LI: +1 right .. -1 left):")
     total_left, total_right = region_totals(analysis.sided_regions)
     ratio_left, ratio_right = region_totals_ratio(total_left, total_right)
     side = "L" if ratio_left >= ratio_right else "R"
@@ -42,13 +51,15 @@ def main():
     li_by_name = dict(analysis.region_laterality)
     wm_li_by_name = dict(analysis.wm_laterality)
     for name, left, right in analysis.sided_regions:
-        print(f"    {left:>5} / {right:<5} {li_by_name[name]:>+5.2f}  {name}")
+        li = li_by_name[name]
+        print(f"    {left:>5} / {right:<5} {li:>+5.2f} {side_letter(li)}  {name}")
         # White matter has no cortical label; show where it was re-mapped to.
         if name == WHITE_MATTER:
             for sub_name, sub_left, sub_right in analysis.wm_subregions:
+                sub_li = wm_li_by_name[sub_name]
                 print(
                     f"          ↳ {sub_left:>4} / {sub_right:<4} "
-                    f"{wm_li_by_name[sub_name]:>+5.2f}  {sub_name} (WM)"
+                    f"{sub_li:>+5.2f} {side_letter(sub_li)}  {sub_name} (WM)"
                 )
 
 

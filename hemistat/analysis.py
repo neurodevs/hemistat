@@ -134,9 +134,9 @@ class StatMapAnalysis:
     mirror: list[tuple[int, int | None]]  # (slice, geometric mirror) on axis 0
     lateralization_score: float           # global share of activation unique to its side
     sided_regions: list[tuple[str, int, int]]    # (region, left, right)
-    region_laterality: list[tuple[str, float]]   # (region, LI); +1 left, -1 right
+    region_laterality: list[tuple[str, float]]   # (region, LI); +1 right, -1 left
     wm_subregions: list[tuple[str, int, int]]    # white matter broken down by nearest cortical
-    wm_laterality: list[tuple[str, float]]       # (wm subregion, LI); +1 left, -1 right
+    wm_laterality: list[tuple[str, float]]       # (wm subregion, LI); +1 right, -1 left
 
 
 def save_json_results(analysis: StatMapAnalysis, json_results_path) -> None:
