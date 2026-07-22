@@ -23,6 +23,8 @@ dependencies = [
     "numpy>=1.21",
     "matplotlib>=3.5",
     "scipy>=1.7",
+    "pydicom>=2.4",
+    "antspyx>=0.6",
 ]
 
 [project.optional-dependencies]
